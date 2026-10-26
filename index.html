@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<link rel="manifest" href="manifest.json">
+<title>Gym AI - Bài tập theo cấp độ</title>
+<style>
+:root{--bg:#0f172a;--panel:#1e293b;--panel2:#273549;--text:#e2e8f0;--muted:#94a3b8;--accent:#22c55e;--warn:#f97316;--danger:#ef4444}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);padding-bottom:env(safe-area-inset-bottom,0)}
+header{position:sticky;top:0;z-index:10;background:var(--bg);border-bottom:1px solid #334155;padding:12px 16px 0}
+h1{font-size:18px;margin:0 0 10px}
+nav{display:flex;gap:6px;overflow-x:auto}
+nav button{flex:none;background:var(--panel);color:var(--muted);border:0;padding:9px 14px;border-radius:999px;font-size:14px;cursor:pointer}
+nav button.active{background:var(--accent);color:#052e16;font-weight:600}
+main{padding:14px 16px 90px;max-width:900px;margin:0 auto}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+input,select{background:var(--panel);color:var(--text);border:1px solid #334155;border-radius:10px;padding:10px 12px;font-size:14px;flex:1;min-width:140px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.card{background:var(--panel);border-radius:14px;overflow:hidden;cursor:pointer;border:1px solid #334155}
+.card img{width:100%;aspect-ratio:1/1;object-fit:cover;background:#fff;display:block}
+.card .b{padding:10px}
+.card .n{font-size:14px;font-weight:600;line-height:1.3;margin-bottom:6px}
+.tag{display:inline-block;font-size:11px;padding:3px 8px;border-radius:999px;background:var(--panel2);color:var(--muted);margin:2px 3px 0 0}
+.lv-beginner{color:#86efac}.lv-intermediate{color:#fde047}.lv-expert{color:#fca5a5}
+.muted{color:var(--muted);font-size:13px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 14px}
+.chip{background:var(--panel);border:1px solid #334155;color:var(--muted);padding:7px 11px;border-radius:999px;font-size:13px;cursor:pointer;user-select:none}
+.chip.on{background:#14532d;border-color:var(--accent);color:#dcfce7}
+.btn{background:var(--accent);color:#052e16;border:0;padding:12px 18px;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer}
+.btn.ghost{background:var(--panel2);color:var(--text);font-weight:500}
+.btn.warn{background:var(--warn);color:#2a0f00}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:flex-start;justify-content:center;z-index:50;overflow-y:auto;padding:20px}
+.modal.open{display:flex}
+.sheet{background:var(--panel);border-radius:16px;max-width:520px;width:100%;padding:16px;position:relative}
+.sheet img{width:100%;border-radius:12px;background:#fff;display:block}
+.sheet ol{padding-left:20px;line-height:1.5;font-size:14px}
+.close{position:absolute;top:10px;right:12px;background:none;border:0;color:var(--text);font-size:24px;cursor:pointer}
+.sec{margin-top:18px}
+.sec h3{font-size:15px;margin:0 0 8px}
+.exercise-log{background:var(--panel);border:1px solid #334155;border-radius:14px;padding:12px;margin-bottom:12px}
+.exercise-log .hd{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.exercise-log img{width:64px;height:64px;border-radius:10px;background:#fff;object-fit:cover}
+.sug{font-size:13px;color:#fde047;margin:6px 0}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{padding:6px 4px;text-align:left}
+td input{width:70px;padding:6px;min-width:0;font-size:14px}
+.timer{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--accent);border-radius:14px;padding:10px 16px;display:none;gap:12px;align-items:center;z-index:40;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.timer.on{display:flex}
+.timer b{font-size:22px;font-variant-numeric:tabular-nums}
+.empty{text-align:center;color:var(--muted);padding:40px 10px}
+</style>
+</head>
+<body>
+<header>
+  <h1>💪 Gym AI</h1>
+  <nav id="tabs">
+    <button data-tab="library" class="active">Thư viện</button>
+    <button data-tab="plan">Tạo giáo án</button>
+    <button data-tab="workout">Buổi tập</button>
+    <button data-tab="history">Lịch sử</button>
+  </nav>
+</header>
+
+<main>
+  <!-- LIBRARY -->
+  <section id="library">
+    <div class="chips" id="levelChips"></div>
+    <div class="toolbar">
+      <input id="search" placeholder="Tìm bài tập (ví dụ: squat, push-up)...">
+      <select id="muscleSel"></select>
+      <select id="equipSel"></select>
+    </div>
+    <div class="muted" id="count" style="margin-bottom:10px"></div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <!-- PLAN -->
+  <section id="plan" hidden>
+    <h2 style="font-size:17px;margin:0 0 6px">1. Chọn cấp độ</h2>
+    <div class="chips" id="planLevels"></div>
+    <h2 style="font-size:17px;margin:14px 0 6px">2. Chọn nhóm cơ</h2>
+    <div class="chips" id="planMuscles"></div>
+    <h2 style="font-size:17px;margin:14px 0 6px">3. Dụng cụ có sẵn</h2>
+    <div class="chips" id="planEquip"></div>
+    <div class="row">
+      <span class="muted">Số bài mỗi nhóm cơ:</span>
+      <select id="perMuscle" style="flex:none;min-width:80px">
+        <option>1</option><option selected>2</option><option>3</option>
+      </select>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn" id="genBtn">Tạo giáo án</button>
+    </div>
+    <div id="planOut" style="margin-top:16px"></div>
+  </section>
+
+  <!-- WORKOUT -->
+  <section id="workout" hidden>
+    <div id="workoutOut"></div>
+  </section>
+
+  <!-- HISTORY -->
+  <section id="history" hidden>
+    <div id="historyOut"></div>
+  </section>
+</main>
+
+<div class="modal" id="modal">
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<div class="timer" id="timer">
+  <span>Nghỉ</span><b id="timerNum">0:00</b>
+  <button class="btn ghost" id="timerStop">Bỏ qua</button>
+</div>
+
+<script src="data.js"></script>
+<script>
+(function(){
+  const EX = window.EXERCISES || [];
+  const LEVELS = {
+    beginner:{label:'Người mới', sets:2, reps:12, rest:60, perMuscle:1, short:'beginner'},
+    intermediate:{label:'Trung cấp', sets:3, reps:10, rest:90, perMuscle:2, short:'intermediate'},
+    expert:{label:'Nâng cao', sets:4, reps:8, rest:120, perMuscle:3, short:'expert'}
+  };
+  const MUSCLE_VI = {abdominals:'Bụng',abductors:'Dạng đùi',adductors:'Khép đùi',biceps:'Tay trước (Nhị đầu)',calves:'Bắp chân',chest:'Ngực',forearms:'Cẳng tay',glutes:'Mông',hamstrings:'Gân kheo',lats:'Xô (lưng)','lower back':'Lưng dưới','middle back':'Lưng giữa',neck:'Cổ',quadriceps:'Đùi trước (Tứ đầu)',shoulders:'Vai',traps:'Cơ thang',triceps:'Tay sau (Tam đầu)'};
+  const EQUIP_VI = {'body only':'Không dụng cụ',barbell:'Tạ đòn',dumbbell:'Tạ đơn',cable:'Cáp (ròng rọc)',machine:'Máy tập',kettlebells:'Kettlebell',bands:'Dây kháng lực','medicine ball':'Bóng thuốc','exercise ball':'Bóng tập','foam roll':'Con lăn xốp','e-z curl bar':'Thanh EZ',other:'Khác',None:'Khác'};
+  const LS_KEY = 'gymai.log.v1';
+  const PLAN_KEY = 'gymai.plan.v1';
+
+  const st = { level:'all', q:'', muscle:'', equip:'', planLevel:'beginner', planMuscles:new Set(['chest','lats','quadriceps']), planEquip:new Set(['body only','dumbbell','barbell','cable','machine','kettlebells','bands','other','None']) };
+
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const load = (k,d)=>{ try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d} };
+  const save = (k,v)=>{ try{localStorage.setItem(k,JSON.stringify(v))}catch(e){} };
+  const muscleName = m => MUSCLE_VI[m] || m;
+  const equipName = e => EQUIP_VI[e] || e || 'Khác';
+  const levelTag = l => `<span class="tag lv-${l}">${LEVELS[l]?LEVELS[l].label:l}</span>`;
+  const imgSrc = ex => ex.images && ex.images[0] ? ex.images[0] : '';
+
+  // ---------- Tabs ----------
+  document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{
+    document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('active',x===b));
+    ['library','plan','workout','history'].forEach(id=>$('#'+id).hidden = id!==b.dataset.tab);
+    if(b.dataset.tab==='workout') renderWorkout();
+    if(b.dataset.tab==='history') renderHistory();
+  });
+
+  // ---------- Library ----------
+  function fillSelect(sel, items, allLabel){
+    sel.innerHTML = `<option value="">${allLabel}</option>` + items.map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join('');
+  }
+  const muscles = [...new Set(EX.flatMap(x=>x.primaryMuscles||[]))].sort();
+  const equips = [...new Set(EX.map(x=>x.equipment||'None'))].sort();
+  fillSelect($('#muscleSel'), muscles.map(m=>[m,muscleName(m)]), 'Mọi nhóm cơ');
+  fillSelect($('#equipSel'), equips.map(e=>[e,equipName(e)]), 'Mọi dụng cụ');
+
+  $('#levelChips').innerHTML = [['all','Tất cả'],['beginner','Người mới'],['intermediate','Trung cấp'],['expert','Nâng cao']]
+    .map(([v,l])=>`<span class="chip" data-lv="${v}">${l}</span>`).join('');
+  $('#levelChips').onclick = e=>{
+    const c = e.target.closest('.chip'); if(!c) return;
+    st.level = c.dataset.lv; renderLevelChips(); renderLibrary();
+  };
+  function renderLevelChips(){ document.querySelectorAll('#levelChips .chip').forEach(c=>c.classList.toggle('on',c.dataset.lv===st.level)); }
+
+  $('#search').oninput = e=>{ st.q=e.target.value.trim().toLowerCase(); renderLibrary(); };
+  $('#muscleSel').onchange = e=>{ st.muscle=e.target.value; renderLibrary(); };
+  $('#equipSel').onchange = e=>{ st.equip=e.target.value; renderLibrary(); };
+
+  function filtered(){
+    return EX.filter(x=>{
+      if(st.level!=='all' && x.level!==st.level) return false;
+      if(st.muscle && !(x.primaryMuscles||[]).includes(st.muscle) && !(x.secondaryMuscles||[]).includes(st.muscle)) return false;
+      if(st.equip && (x.equipment||'None')!==st.equip) return false;
+      if(st.q && !(x.name.toLowerCase().includes(st.q))) return false;
+      return true;
+    });
+  }
+  function renderLibrary(){
+    renderLevelChips();
+    const list = filtered();
+    $('#count').textContent = `${list.length} bài tập`;
+    const show = list.slice(0,200);
+    $('#grid').innerHTML = show.length ? show.map(x=>`
+      <div class="card" data-id="${esc(x.id)}">
+        <img src="${esc(imgSrc(x))}" alt="${esc(x.name)}" loading="lazy">
+        <div class="b">
+          <div class="n">${esc(x.name)}</div>
+          ${levelTag(x.level)}
+          <div class="muted" style="margin-top:4px">${esc((x.primaryMuscles||[]).map(muscleName).join(', '))}</div>
+        </div>
+      </div>`).join('') : `<div class="empty">Không có bài tập phù hợp.</div>`;
+    if(list.length>200) $('#grid').insertAdjacentHTML('beforeend',`<div class="empty" style="grid-column:1/-1">Đang hiển thị 200/${list.length}. Hãy lọc thêm để thu hẹp.</div>`);
+  }
+  $('#grid').onclick = e=>{
+    const c = e.target.closest('.card'); if(!c) return;
+    openDetail(c.dataset.id);
+  };
+
+  // ---------- Detail modal with animated illustration ----------
+  let animTimer = null;
+  function openDetail(id){
+    const x = EX.find(e=>e.id===id); if(!x) return;
+    clearInterval(animTimer);
+    const imgs = x.images && x.images.length ? x.images : [''];
+    $('#sheet').innerHTML = `
+      <button class="close" id="closeModal">×</button>
+      <h2 style="margin:0 0 8px;font-size:18px;padding-right:24px">${esc(x.name)}</h2>
+      <div class="row" style="margin-bottom:10px">${levelTag(x.level)}<span class="tag">${esc(equipName(x.equipment))}</span><span class="tag">${esc(x.category||'')}</span></div>
+      <img id="demoImg" src="${esc(imgs[0])}" alt="${esc(x.name)}">
+      <div class="muted" style="text-align:center;font-size:12px;margin-top:4px">${imgs.length>1?'Đang chuyển khung minh họa...':''}</div>
+      <div class="sec"><h3>Nhóm cơ chính</h3>${(x.primaryMuscles||[]).map(m=>`<span class="tag">${esc(muscleName(m))}</span>`).join('')||'<span class="muted">—</span>'}</div>
+      ${(x.secondaryMuscles||[]).length?`<div class="sec"><h3>Nhóm cơ phụ</h3>${x.secondaryMuscles.map(m=>`<span class="tag">${esc(muscleName(m))}</span>`).join('')}</div>`:''}
+      <div class="sec"><h3>Cách thực hiện</h3><ol>${(x.instructions||[]).map(s=>`<li>${esc(s)}</li>`).join('')}</ol></div>
+      <div class="muted" style="font-size:12px">Nội dung gốc bằng tiếng Anh.</div>`;
+    $('#modal').classList.add('open');
+    $('#closeModal').onclick = closeModal;
+    if(imgs.length>1){
+      let i=0; const el=$('#demoImg');
+      animTimer = setInterval(()=>{ i=(i+1)%imgs.length; el.src=imgs[i]; },800);
+    }
+  }
+  function closeModal(){ clearInterval(animTimer); $('#modal').classList.remove('open'); }
+  $('#modal').onclick = e=>{ if(e.target.id==='modal') closeModal(); };
+
+  // ---------- Plan generator ----------
+  function renderPlanControls(){
+    $('#planLevels').innerHTML = Object.entries(LEVELS).map(([k,v])=>`<span class="chip ${st.planLevel===k?'on':''}" data-lv="${k}">${v.label}</span>`).join('');
+    $('#planMuscles').innerHTML = muscles.map(m=>`<span class="chip ${st.planMuscles.has(m)?'on':''}" data-m="${m}">${esc(muscleName(m))}</span>`).join('');
+    $('#planEquip').innerHTML = equips.map(e=>`<span class="chip ${st.planEquip.has(e)?'on':''}" data-e="${esc(e)}">${esc(equipName(e))}</span>`).join('');
+    const lv = LEVELS[st.planLevel];
+    $('#perMuscle').value = String(lv.perMuscle);
+  }
+  $('#planLevels').onclick = e=>{ const c=e.target.closest('.chip'); if(!c) return; st.planLevel=c.dataset.lv; renderPlanControls(); };
+  $('#planMuscles').onclick = e=>{ const c=e.target.closest('.chip'); if(!c) return; toggle(st.planMuscles,c.dataset.m); renderPlanControls(); };
+  $('#planEquip').onclick = e=>{ const c=e.target.closest('.chip'); if(!c) return; toggle(st.planEquip,c.dataset.e); renderPlanControls(); };
+  function toggle(set,v){ set.has(v)?set.delete(v):set.add(v); }
+
+  $('#genBtn').onclick = ()=>{
+    const lv = LEVELS[st.planLevel];
+    const per = parseInt($('#perMuscle').value,10) || lv.perMuscle;
+    const picked = [];
+    const used = new Set();
+    st.planMuscles.forEach(m=>{
+      const pool = EX.filter(x=>x.level===st.planLevel && (x.primaryMuscles||[]).includes(m) && st.planEquip.has(x.equipment||'None') && !used.has(x.id));
+      shuffle(pool).slice(0,per).forEach(x=>{ used.add(x.id); picked.push({ex:x.id, muscle:m}); });
+    });
+    if(!picked.length){ $('#planOut').innerHTML = `<div class="empty">Không tìm được bài phù hợp. Hãy nới bộ lọc dụng cụ hoặc nhóm cơ.</div>`; return; }
+    const plan = {level:st.planLevel, sets:lv.sets, reps:lv.reps, rest:lv.rest, items:picked, created:Date.now()};
+    save(PLAN_KEY, plan);
+    renderPlanOut(plan);
+  };
+  function renderPlanOut(plan){
+    const lv = LEVELS[plan.level];
+    $('#planOut').innerHTML = `
+      <div class="muted" style="margin-bottom:10px">Giáo án ${esc(lv.label)}: ${plan.sets} set × ${plan.reps} reps, nghỉ ${plan.rest}s giữa các set.</div>
+      <div class="row" style="margin-bottom:12px"><button class="btn" id="startBtn">Bắt đầu buổi tập</button><button class="btn ghost" id="regenBtn">Tạo lại</button></div>
+      <div class="grid">${plan.items.map(p=>{ const x=EX.find(e=>e.id===p.ex); return x?`
+        <div class="card" data-id="${esc(x.id)}">
+          <img src="${esc(imgSrc(x))}" alt="${esc(x.name)}" loading="lazy">
+          <div class="b"><div class="n">${esc(x.name)}</div><div class="muted">${esc(muscleName(p.muscle))}</div></div>
+        </div>`:''}).join('')}</div>`;
+    $('#startBtn').onclick = ()=>{ document.querySelector('#tabs button[data-tab="workout"]').click(); };
+    $('#regenBtn').onclick = ()=>$('#genBtn').click();
+    $('#planOut').onclick = e=>{ const c=e.target.closest('.card'); if(c) openDetail(c.dataset.id); };
+  }
+  function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+  // ---------- Workout logging ----------
+  let timerId=null, timerLeft=0;
+  function startRest(sec){
+    clearInterval(timerId); timerLeft=sec; $('#timer').classList.add('on'); tick();
+    timerId=setInterval(()=>{ timerLeft--; tick(); if(timerLeft<=0){ stopRest(); beep(); } },1000);
+  }
+  function tick(){ const m=Math.floor(Math.max(timerLeft,0)/60), s=Math.max(timerLeft,0)%60; $('#timerNum').textContent=`${m}:${String(s).padStart(2,'0')}`; }
+  function stopRest(){ clearInterval(timerId); $('#timer').classList.remove('on'); }
+  $('#timerStop').onclick = stopRest;
+  function beep(){ try{ if(navigator.vibrate) navigator.vibrate([200,100,200]); }catch(e){} }
+
+  function getLog(){ return load(LS_KEY, {}); }
+  // Gợi ý buổi sau: nếu đạt đủ reps ở mọi set thì tăng tạ 2.5kg (hoặc +1 reps nếu không tạ)
+  function suggest(exId, plan){
+    const hist = (getLog()[exId]||[]);
+    if(!hist.length) return {weight:'', text:'Chưa có dữ liệu, hãy bắt đầu với mức tạ nhẹ.'};
+    const last = hist[hist.length-1];
+    const sets = last.sets.filter(s=>s.r);
+    if(!sets.length) return {weight:last.weight||'', text:'Giữ nguyên mức tạ buổi trước.'};
+    const allHit = sets.length>=plan.sets && sets.every(s=>s.r>=plan.reps);
+    const w = parseFloat(last.weight)||0;
+    if(allHit){
+      if(w>0) return {weight:+(w+2.5).toFixed(1), text:`Đạt đủ ${plan.reps} reps mọi set → tăng lên ${+(w+2.5).toFixed(1)} kg.`};
+      return {weight:'', text:`Đạt đủ reps → thử tăng thêm 1-2 reps hoặc độ khó.`};
+    }
+    return {weight:w||'', text:`Chưa đạt đủ ${plan.reps} reps → giữ nguyên mức tạ và cố gắng hơn.`};
+  }
+
+  function renderWorkout(){
+    const plan = load(PLAN_KEY,null);
+    if(!plan){ $('#workoutOut').innerHTML=`<div class="empty">Chưa có giáo án. Hãy vào tab <b>Tạo giáo án</b> trước.</div>`; return; }
+    const log = getLog();
+    $('#workoutOut').innerHTML = `
+      <div class="muted" style="margin-bottom:10px">${esc(LEVELS[plan.level].label)} · ${plan.sets} set × ${plan.reps} reps · nghỉ ${plan.rest}s</div>
+      ${plan.items.map((p,idx)=>{
+        const x=EX.find(e=>e.id===p.ex); if(!x) return '';
+        const s=suggest(x.id, plan);
+        const weightField = x.equipment==='body only' ? '' : `
+          <div class="sug">${esc(s.text)}</div>`;
+        const rows = Array.from({length:plan.sets},(_,i)=>`
+          <tr><td>Set ${i+1}</td>
+          <td>${x.equipment==='body only'?'—':`<input type="number" inputmode="decimal" min="0" step="0.5" data-ex="${esc(x.id)}" data-f="w" data-set="${i}" value="${s.weight||''}" placeholder="kg">`}</td>
+          <td><input type="number" inputmode="numeric" min="0" data-ex="${esc(x.id)}" data-f="r" data-set="${i}" placeholder="${plan.reps}"></td>
+          <td><button class="btn ghost" data-rest="${plan.rest}" style="padding:6px 10px">Nghỉ</button></td></tr>`).join('');
+        return `
+        <div class="exercise-log" data-ex-card="${esc(x.id)}">
+          <div class="hd" style="cursor:pointer" data-open="${esc(x.id)}">
+            <img src="${esc(imgSrc(x))}" alt="">
+            <div><div style="font-weight:600">${idx+1}. ${esc(x.name)}</div><div class="muted">${esc(muscleName(p.muscle))} · ${esc(equipName(x.equipment))}</div></div>
+          </div>
+          ${weightField}
+          <table><thead><tr><th>Set</th><th>Tạ (kg)</th><th>Reps</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+        </div>`;}).join('')}
+      <div class="row" style="margin-top:6px"><button class="btn" id="finishBtn">Hoàn thành buổi tập</button></div>`;
+    $('#workoutOut').onclick = e=>{
+      const b = e.target.closest('[data-rest]'); if(b){ startRest(parseInt(b.dataset.rest,10)); return; }
+      const o = e.target.closest('[data-open]'); if(o){ openDetail(o.dataset.open); }
+    };
+    $('#finishBtn').onclick = ()=>finishWorkout(plan);
+  }
+
+  function finishWorkout(plan){
+    const log = getLog();
+    const date = new Date().toISOString();
+    let saved=0;
+    plan.items.forEach(p=>{
+      const sets = [];
+      document.querySelectorAll(`[data-ex="${CSS.escape(p.ex)}"][data-f="r"]`).forEach((inp,i)=>{
+        const r = parseFloat(inp.value)||0;
+        const wEl = document.querySelector(`[data-ex="${CSS.escape(p.ex)}"][data-f="w"][data-set="${i}"]`);
+        const w = wEl ? (parseFloat(wEl.value)||0) : 0;
+        sets.push({w, r});
+      });
+      if(sets.some(s=>s.r>0)){
+        const weight = sets.reduce((m,s)=>Math.max(m,s.w),0);
+        log[p.ex] = (log[p.ex]||[]).concat([{date, weight, sets}]);
+        saved++;
+      }
+    });
+    save(LS_KEY, log);
+    alert(saved ? `Đã lưu ${saved} bài vào lịch sử.` : 'Chưa nhập reps nào nên chưa lưu.');
+    if(saved) document.querySelector('#tabs button[data-tab="history"]').click();
+  }
+
+  // ---------- History ----------
+  function renderHistory(){
+    const log = getLog();
+    const ids = Object.keys(log);
+    if(!ids.length){ $('#historyOut').innerHTML=`<div class="empty">Chưa có dữ liệu tập luyện.</div>`; return; }
+    $('#historyOut').innerHTML = ids.map(id=>{
+      const x=EX.find(e=>e.id===id); if(!x) return '';
+      const entries = log[id].slice().reverse().slice(0,10);
+      return `<div class="exercise-log">
+        <div style="font-weight:600;margin-bottom:6px">${esc(x.name)}</div>
+        <table><thead><tr><th>Ngày</th><th>Tạ max</th><th>Sets (kg×reps)</th></tr></thead><tbody>
+        ${entries.map(e=>`<tr><td>${new Date(e.date).toLocaleDateString('vi-VN')}</td><td>${e.weight||'—'}</td><td>${e.sets.map(s=>`${s.w||'—'}×${s.r}`).join(' · ')}</td></tr>`).join('')}
+        </tbody></table></div>`;
+    }).join('');
+  }
+
+  // ---------- Init ----------
+  renderLevelChips();
+  renderLibrary();
+  renderPlanControls();
+  if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  }
+})();
+</script>
+</body>
+</html>
